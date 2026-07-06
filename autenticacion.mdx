@@ -1,0 +1,33 @@
+---
+title: "Autenticación"
+description: "Todas las llamadas se autentican con tu API key en el header X-API-Key."
+---
+
+Xenda te provee una API key con formato `xnd_...`, asociada a tu cuenta de WhatsApp
+Business. Se envía en **todas** las llamadas:
+
+```
+X-API-Key: xnd_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+Base URL de producción:
+
+```
+https://api.automationhub.one/api:RIKjHOHm
+```
+
+<Warning>
+Tratá la key como una credencial sensible: guardala en un secret manager o en las
+credenciales de n8n (no en el JSON del workflow). Si se filtra, avisanos y la rotamos
+en el momento — la key vieja deja de funcionar apenas se emite la nueva.
+</Warning>
+
+## Errores de autenticación
+
+| HTTP | Causa |
+|------|-------|
+| `403` | Header `X-API-Key` faltante, key inválida o desactivada. |
+
+El scoping es automático: tu key solo ve y opera sobre las campañas creadas con esa key.
+No necesitás mandar ningún identificador de cuenta ni número de teléfono emisor — salen
+de la key.

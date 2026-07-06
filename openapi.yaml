@@ -1,0 +1,328 @@
+openapi: 3.1.0
+info:
+  title: Xenda Partner API
+  version: 1.0.0
+  description: |
+    API para integraciones externas con la plataforma Xenda.
+    Enviá templates de WhatsApp a través del módulo de campañas y recibí las
+    respuestas de tus clientes por webhook, con un ID por envío y soporte de
+    idempotencia para reintentos seguros.
+servers:
+  - url: https://api.automationhub.one/api:RIKjHOHm
+    description: Producción
+security:
+  - ApiKeyAuth: []
+paths:
+  /campaigns:
+    post:
+      operationId: sendCampaign
+      summary: Enviar un template (campaña)
+      description: |
+        Una sola llamada crea la campaña, carga el/los destinatario(s) y ejecuta
+        el envío. Devuelve el `campaign_id` que después llega en el webhook de
+        respuestas.
+
+        **Idempotencia**: si reintentás con la misma `idempotency_key`, no se
+        duplica el envío — devolvemos la respuesta original con `replayed: true`.
+        Ante un error `502`, reintentá con la **misma** clave.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CampaignSendRequest"
+            example:
+              idempotency_key: presupuesto-4812-followup-1
+              template_name: seguimiento_presupuesto
+              template_language: es_AR
+              external_ref: PRES-4812
+              campaign_name: Follow-up presupuesto 4812
+              recipients:
+                - phone: "+5491123456789"
+                  params: ["Juan", "4812"]
+      responses:
+        "200":
+          description: Envío ejecutado (o replay idempotente de un envío previo).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CampaignSendResponse"
+        "400":
+          description: Input inválido (teléfono mal formado, template inexistente o no aprobado, sin destinatarios válidos, o envío en vuelo con la misma idempotency_key).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: API key faltante o inválida.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthError"
+        "502":
+          description: Fallo aguas arriba (WhatsApp). Reintentá con la misma idempotency_key.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /campaigns/{campaign_id}:
+    get:
+      operationId: getCampaignStatus
+      summary: Estado de un envío
+      description: |
+        Estado en vivo de la campaña y de cada destinatario (envío, entrega,
+        lectura y respuesta). Solo devuelve campañas creadas con tu API key.
+        Devuelve hasta 100 destinatarios.
+      parameters:
+        - name: campaign_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: El `campaign_id` devuelto por `POST /campaigns`.
+      responses:
+        "200":
+          description: Estado de la campaña.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CampaignStatusResponse"
+        "403":
+          description: API key faltante o inválida.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthError"
+        "404":
+          description: Campaña inexistente o no pertenece a esta API key.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthError"
+webhooks:
+  reply.received:
+    post:
+      operationId: replyReceived
+      summary: Respuesta de un cliente
+      description: |
+        Cuando un cliente responde a un template enviado por esta API, hacemos
+        POST a tu URL configurada. Verificá el header `X-Xenda-Webhook-Secret`
+        contra el secret compartido y respondé **200 en menos de 10 segundos**.
+        Si tu endpoint falla, reintentamos con backoff durante ~3 horas.
+
+        La respuesta se atribuye al **último envío** hecho a ese número dentro
+        de una ventana de 7 días — usá `external_ref` (un envío por
+        presupuesto/operación) para mapearla de tu lado.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReplyReceivedEvent"
+            example:
+              event: reply.received
+              campaign_id: a1b2c3d4-5678-90ab-cdef-1234567890ab
+              external_ref: PRES-4812
+              phone: "+5491123456789"
+              message:
+                id: wamid.XXXXXXXX
+                type: text
+                text: "Sí, me interesa. ¿Podemos hablar mañana?"
+                timestamp: 1752159000
+              received_at: 1752159001234
+      responses:
+        "200":
+          description: Recibido. Cualquier otro código dispara reintentos.
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key provista por Xenda (formato `xnd_...`). Se envía en todas las llamadas.
+  schemas:
+    CampaignSendRequest:
+      type: object
+      required: [idempotency_key, recipients]
+      properties:
+        idempotency_key:
+          type: string
+          maxLength: 128
+          description: Clave única por envío. Reintentos con la misma clave no duplican el envío.
+        template_name:
+          type: string
+          description: Nombre exacto del template aprobado. Requerido si no mandás `template_id`.
+        template_language:
+          type: string
+          description: Código de idioma (ej. `es_AR`). Requerido solo si el template existe en más de un idioma.
+        template_id:
+          type: string
+          description: ID del template (alternativa a `template_name`).
+        external_ref:
+          type: string
+          description: Tu referencia (ej. ID de presupuesto). Se devuelve en la respuesta y en el webhook de respuestas.
+        campaign_name:
+          type: string
+          description: "Nombre visible de la campaña en la plataforma. Default: `API - {template} - {external_ref}`."
+        recipients:
+          type: array
+          minItems: 1
+          maxItems: 1000
+          items:
+            $ref: "#/components/schemas/Recipient"
+    Recipient:
+      type: object
+      required: [phone]
+      properties:
+        phone:
+          type: string
+          description: Teléfono en formato internacional (ej. `+5491123456789`).
+        params:
+          description: |
+            Variables del template. Array para posicionales (`{{1}}`, `{{2}}`)
+            u objeto para variables con nombre (`{"nombre": "Juan"}`).
+          oneOf:
+            - type: array
+              items:
+                type: string
+            - type: object
+              additionalProperties:
+                type: string
+    CampaignSendResponse:
+      type: object
+      properties:
+        campaign_id:
+          type: string
+          description: ID del envío. Guardalo — viene en el webhook de respuestas.
+        status:
+          type: string
+          enum: [sent]
+        campaign_name:
+          type: string
+        external_ref:
+          type: string
+          nullable: true
+        recipients:
+          type: object
+          properties:
+            added:
+              type: integer
+            duplicates:
+              type: integer
+            errors:
+              type: array
+              items:
+                type: string
+        replayed:
+          type: boolean
+          description: "`true` si esta respuesta es el replay de un envío previo con la misma idempotency_key."
+    CampaignStatusResponse:
+      type: object
+      properties:
+        campaign_id:
+          type: string
+        status:
+          type: string
+          description: "`draft`, `sending`, `sent`, `completed` o `failed`."
+        campaign_name:
+          type: string
+        external_ref:
+          type: string
+          nullable: true
+        counts:
+          type: object
+          properties:
+            total_recipients:
+              type: integer
+            pending:
+              type: integer
+            sent:
+              type: integer
+            failed:
+              type: integer
+            delivered:
+              type: integer
+            read:
+              type: integer
+            responded:
+              type: integer
+        recipients:
+          type: array
+          items:
+            type: object
+            properties:
+              phone:
+                type: string
+              status:
+                type: string
+                description: "`pending`, `sent` o `failed`."
+              sent_at:
+                type: string
+                nullable: true
+              delivered_at:
+                type: string
+                nullable: true
+              read_at:
+                type: string
+                nullable: true
+              responded_at:
+                type: string
+                nullable: true
+              error_message:
+                type: string
+                nullable: true
+    ReplyReceivedEvent:
+      type: object
+      properties:
+        event:
+          type: string
+          enum: [reply.received]
+        campaign_id:
+          type: string
+          description: El mismo ID devuelto por `POST /campaigns`.
+        external_ref:
+          type: string
+          nullable: true
+          description: Tu referencia, tal cual la mandaste en el envío.
+        phone:
+          type: string
+        message:
+          type: object
+          properties:
+            id:
+              type: string
+            type:
+              type: string
+              description: "`text`, `audio`, `image`, etc. Si no es texto, `text` puede venir null."
+            text:
+              type: string
+              nullable: true
+            timestamp:
+              type: integer
+              description: Timestamp del mensaje (epoch, según WhatsApp).
+        received_at:
+          type: integer
+          description: Epoch ms de recepción en nuestra plataforma.
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [failed]
+        error:
+          type: string
+        campaign_id:
+          type: string
+          nullable: true
+          description: Presente si la campaña llegó a crearse antes del fallo.
+        external_ref:
+          type: string
+          nullable: true
+        replayed:
+          type: boolean
+    AuthError:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string

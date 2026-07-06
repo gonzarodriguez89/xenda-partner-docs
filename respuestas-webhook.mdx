@@ -1,0 +1,57 @@
+---
+title: "Webhook de respuestas"
+description: "Recibí un POST en tu endpoint cada vez que un cliente responde a un template enviado por la API."
+---
+
+Cuando un cliente responde a un template enviado por esta API, hacemos POST a la URL que
+nos configures (por ejemplo, un webhook trigger de n8n):
+
+```json
+{
+  "event": "reply.received",
+  "campaign_id": "a1b2c3d4-5678-90ab-cdef-1234567890ab",
+  "external_ref": "PRES-4812",
+  "phone": "+5491123456789",
+  "message": {
+    "id": "wamid.XXXXXXXX",
+    "type": "text",
+    "text": "Sí, me interesa. ¿Podemos hablar mañana?",
+    "timestamp": 1752159000
+  },
+  "received_at": 1752159001234
+}
+```
+
+## Headers
+
+| Header | Valor |
+|--------|-------|
+| `X-Xenda-Event` | `reply.received` |
+| `X-Xenda-Webhook-Secret` | El secret compartido que acordamos al configurar el webhook. **Verificalo por igualdad** antes de procesar. |
+| `Content-Type` | `application/json` |
+
+## Qué esperamos de tu endpoint
+
+- Respondé **`200` en menos de 10 segundos**. Procesá en background si tu lógica es lenta.
+- Si tu endpoint devuelve otro código o no responde, **reintentamos con backoff durante
+  ~3 horas** (2 min, 20 min, 45 min, 80 min). Después de eso el evento se descarta.
+- Los reintentos mandan **exactamente el mismo payload** — si necesitás deduplicar, usá
+  `message.id`.
+
+## Cómo se atribuye la respuesta
+
+WhatsApp no vincula técnicamente una respuesta libre con el mensaje que la originó.
+La atribución es al **último envío** que le hicimos a ese número por esta API, dentro de
+una ventana de **7 días**.
+
+<Tip>
+Para el caso típico — un envío por presupuesto/operación con su `external_ref` — esto
+funciona directo. Tenelo en cuenta solo si un mismo cliente tiene **dos operaciones
+activas a la vez**: si responde sin citar el mensaje, la respuesta se atribuye a la más
+reciente.
+</Tip>
+
+## Mensajes que no son texto
+
+Si el cliente responde con audio, imagen o documento, `message.type` lo indica y
+`message.text` puede venir `null`.

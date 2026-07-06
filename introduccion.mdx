@@ -1,0 +1,54 @@
+---
+title: "Introducción"
+description: "Enviá templates de WhatsApp desde tu sistema y recibí las respuestas de tus clientes."
+---
+
+La **Xenda Partner API** te permite integrar tu sistema (n8n, un CRM propio, o cualquier
+backend) con la plataforma Xenda para:
+
+1. **Enviar templates de WhatsApp** a uno o más destinatarios — cada envío es una campaña
+   visible en la plataforma, con métricas de entrega y lectura.
+2. **Consultar el estado** de cada envío (enviado, entregado, leído, respondido).
+3. **Recibir un webhook** cuando el cliente responde, con el `campaign_id` y tu
+   `external_ref` para atar la respuesta a la operación correcta de tu lado.
+
+## Cómo funciona un envío
+
+Una sola llamada a `POST /campaigns` (ver pestaña **API Reference**, con playground
+interactivo) hace todo: crea la campaña, carga los destinatarios y ejecuta el envío.
+
+```bash
+curl -X POST "https://api.automationhub.one/api:RIKjHOHm/campaigns" \
+  -H "X-API-Key: xnd_TU_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "idempotency_key": "presupuesto-4812-followup-1",
+    "template_name": "seguimiento_presupuesto",
+    "template_language": "es_AR",
+    "external_ref": "PRES-4812",
+    "recipients": [
+      { "phone": "+5491123456789", "params": ["Juan", "4812"] }
+    ]
+  }'
+```
+
+La respuesta incluye el `campaign_id` — guardalo: es el ID de ese envío puntual y es el
+mismo que después llega en el [webhook de respuestas](/respuestas-webhook).
+
+## Idempotencia (reintentos seguros)
+
+Cada envío lleva una `idempotency_key` tuya. Si tu sistema reintenta la llamada (timeout,
+reejecución de un flow, etc.), **no se duplica el envío**: devolvemos la respuesta original
+con `replayed: true`.
+
+<Tip>
+Ante un error `502` (fallo aguas arriba de WhatsApp), reintentá con la **misma**
+`idempotency_key`. Ante un `400`, corregí el request — reintentar igual no va a duplicar
+nada, pero el error va a persistir.
+</Tip>
+
+## ¿Un destinatario o varios?
+
+Las campañas aceptan de 1 a 1000 destinatarios. Para follow-ups uno a uno, mandá una
+campaña por envío (te da un `campaign_id` por operación). Si la comunicación es la misma
+para muchos contactos y solo cambian las variables, agrupalos en una sola campaña.

@@ -1,0 +1,12 @@
+---
+title: "Changelog"
+description: "Novedades y cambios de la Xenda Partner API."
+---
+
+<Update label="Julio 2026" description="v1.0">
+**Lanzamiento inicial de la Partner API.**
+
+- `POST /campaigns`: envío de templates con idempotencia y `external_ref`.
+- `GET /campaigns/{campaign_id}`: estado del envío por destinatario.
+- Webhook `reply.received`: respuestas de clientes con `campaign_id` + `external_ref`.
+</Update>
