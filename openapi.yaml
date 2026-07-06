@@ -52,19 +52,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: "#/components/schemas/ApiError"
         "403":
           description: API key faltante o inválida.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AuthError"
-        "502":
-          description: Fallo aguas arriba (WhatsApp). Reintentá con la misma idempotency_key.
+                $ref: "#/components/schemas/ApiError"
+        "500":
+          description: Fallo aguas arriba (WhatsApp). Reintentá con la misma idempotency_key — no se duplica el envío.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: "#/components/schemas/ApiError"
   /campaigns/{campaign_id}:
     get:
       operationId: getCampaignStatus
@@ -92,13 +92,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AuthError"
+                $ref: "#/components/schemas/ApiError"
         "404":
           description: Campaña inexistente o no pertenece a esta API key.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AuthError"
+                $ref: "#/components/schemas/ApiError"
 webhooks:
   reply.received:
     post:
@@ -302,27 +302,29 @@ components:
         received_at:
           type: integer
           description: Epoch ms de recepción en nuestra plataforma.
-    ErrorResponse:
+    ApiError:
       type: object
-      properties:
-        status:
-          type: string
-          enum: [failed]
-        error:
-          type: string
-        campaign_id:
-          type: string
-          nullable: true
-          description: Presente si la campaña llegó a crearse antes del fallo.
-        external_ref:
-          type: string
-          nullable: true
-        replayed:
-          type: boolean
-    AuthError:
-      type: object
+      description: Formato único de error de la API.
       properties:
         code:
           type: string
+          description: "`ERROR_CODE_INPUT_ERROR` (400), `ERROR_CODE_ACCESS_DENIED` (403), `ERROR_CODE_NOT_FOUND` (404), `ERROR_CODE_STANDARD_ERROR` (500)."
         message:
           type: string
+          description: Descripción legible del error.
+        payload:
+          type: object
+          description: Contexto extra. En errores de envío incluye `campaign_id` (si la campaña llegó a crearse antes del fallo) y `external_ref`.
+          properties:
+            campaign_id:
+              type: string
+              nullable: true
+            external_ref:
+              type: string
+              nullable: true
+      example:
+        code: ERROR_CODE_INPUT_ERROR
+        message: "Template 'seguimiento_presupuesto' not found or not APPROVED."
+        payload:
+          campaign_id: null
+          external_ref: null

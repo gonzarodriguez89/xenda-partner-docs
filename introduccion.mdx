@@ -42,7 +42,7 @@ reejecución de un flow, etc.), **no se duplica el envío**: devolvemos la respu
 con `replayed: true`.
 
 <Tip>
-Ante un error `502` (fallo aguas arriba de WhatsApp), reintentá con la **misma**
+Ante un error `500` (fallo aguas arriba de WhatsApp), reintentá con la **misma**
 `idempotency_key`. Ante un `400`, corregí el request — reintentar igual no va a duplicar
 nada, pero el error va a persistir.
 </Tip>
