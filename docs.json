@@ -40,8 +40,14 @@
     ]
   },
   "footer": {
-    "socials": {
-      "website": "https://xenda.ai"
-    }
+    "links": [
+      {
+        "header": "Xenda",
+        "items": [
+          {"label": "Sitio web", "href": "https://xenda.ai"},
+          {"label": "Contacto", "href": "mailto:contacto@xenda.ai"}
+        ]
+      }
+    ]
   }
 }
