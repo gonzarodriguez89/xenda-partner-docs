@@ -3,6 +3,12 @@
   "theme": "mint",
   "name": "Xenda Partner API",
   "description": "API para integraciones externas con la plataforma Xenda: envío de templates de WhatsApp vía campañas y webhook de respuestas.",
+  "logo": {
+    "light": "/logo/logo_light.png",
+    "dark": "/logo/logo_dark.png",
+    "href": "https://xenda.ai"
+  },
+  "favicon": "/favicon.png",
   "colors": {
     "primary": "#6D28D9",
     "light": "#8B5CF6",
