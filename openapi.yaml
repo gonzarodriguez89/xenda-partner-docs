@@ -163,6 +163,15 @@ components:
         campaign_name:
           type: string
           description: "Nombre visible de la campaña en la plataforma. Default: `API - {template} - {external_ref}`."
+        header_media_url:
+          type: string
+          description: |
+            URL pública **https** del archivo del header. **Obligatorio si el template
+            tiene header de imagen, video o documento (PDF)** — sin este campo el envío
+            devuelve 400. No se acepta base64: el archivo tiene que estar hosteado y ser
+            descargable sin autenticación. Límites de WhatsApp: imagen 5 MB (jpg/png),
+            video 16 MB (mp4), documento 100 MB (PDF). Para documentos, el nombre del
+            archivo se toma de la URL.
         recipients:
           type: array
           minItems: 1

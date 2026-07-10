@@ -47,6 +47,27 @@ Ante un error `500` (fallo aguas arriba de WhatsApp), reintentá con la **misma*
 nada, pero el error va a persistir.
 </Tip>
 
+## Templates con imagen, video o PDF
+
+Si tu template tiene un header multimedia (imagen, video o documento), tenés que mandar
+`header_media_url` en el request: una **URL pública https** del archivo, descargable sin
+autenticación. No se acepta base64.
+
+```json
+{
+  "idempotency_key": "presupuesto-4812-followup-1",
+  "template_name": "promo_con_imagen",
+  "header_media_url": "https://tu-servidor.com/promos/imagen-julio.png",
+  "recipients": [{ "phone": "+5491123456789" }]
+}
+```
+
+- Límites de WhatsApp: imagen **5 MB** (jpg/png), video **16 MB** (mp4), documento **100 MB** (PDF).
+- Para documentos, el nombre visible del archivo se toma de la URL.
+- Si el template tiene header multimedia y no mandás `header_media_url`, el envío devuelve
+  `400` con un mensaje claro (el media de muestra con el que se aprobó el template no se
+  puede reusar para envíos — limitación de WhatsApp).
+
 ## ¿Un destinatario o varios?
 
 Las campañas aceptan de 1 a 1000 destinatarios. Para follow-ups uno a uno, mandá una
