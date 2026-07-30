@@ -1,0 +1,448 @@
+openapi: 3.1.0
+info:
+  title: Xenda POS Bridge
+  version: 1.0.0
+  description: |
+    Bridge entre tu sistema de punto de venta y el módulo de pedidos por WhatsApp de
+    Xenda. Tu POS empuja el catálogo, consulta los pedidos que toma el bot e informa
+    los cambios de estado. Todo el tráfico lo origina tu sistema; la key es por
+    sucursal.
+servers:
+  - url: https://api.automationhub.one/api:07fkGLk_
+    description: Producción (sandbox = misma URL con key de la sucursal demo)
+security:
+  - ApiKeyAuth: []
+paths:
+  /v1/catalog/items:
+    post:
+      operationId: pushCatalogItems
+      summary: Empujar productos
+      description: |
+        Alta, modificación o baja de productos, en lote. Idempotente por `event_id`;
+        los eventos más viejos que lo ya aplicado se descartan (`skipped_stale`);
+        un ítem inválido no rechaza el lote (`rejected` por ítem).
+
+        `action: "delete"` desactiva los productos listados (no se borran: los
+        pedidos históricos siguen siendo legibles).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CatalogItemsRequest"
+            example:
+              event_id: pos-evt-20260730-001
+              occurred_at: "2026-07-30T13:00:00-03:00"
+              action: upsert
+              items:
+                - codigo: "1001"
+                  nombre: Kilo de helado
+                  categoria: Helados
+                  precio: 16000
+                  deshabilitado: false
+      responses:
+        "200":
+          description: Resultado del lote (o replay idempotente si el `event_id` ya se procesó).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestResponse"
+        "403":
+          $ref: "#/components/responses/AccessDenied"
+  /v1/catalog/options:
+    post:
+      operationId: pushCatalogOptions
+      summary: Empujar opciones (sabores)
+      description: |
+        Alta, modificación o baja de opciones, en lote. El `grupo` (ej. "Sabores")
+        se crea automáticamente la primera vez que aparece. Mismas reglas de
+        idempotencia, orden de eventos y errores por ítem que los productos.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CatalogOptionsRequest"
+            example:
+              event_id: pos-evt-20260730-002
+              occurred_at: "2026-07-30T13:05:00-03:00"
+              action: upsert
+              options:
+                - codigo: S01
+                  nombre: Dulce de leche
+                  grupo: Sabores
+                  deshabilitado: false
+      responses:
+        "200":
+          description: Resultado del lote.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestResponse"
+        "403":
+          $ref: "#/components/responses/AccessDenied"
+  /v1/orders:
+    get:
+      operationId: listOrders
+      summary: Consultar pedidos (polling)
+      description: |
+        Pedidos de la sucursal de la key, por estado. Pensado para polling cada 1-2
+        minutos con `status=pendiente`. Las líneas vienen con **tus códigos**
+        (los del catálogo que empujaste), congelados al momento del pedido.
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pendiente, en_preparacion, listo, entregado, rechazado, cancelado]
+            default: pendiente
+        - name: since
+          in: query
+          description: Solo pedidos creados después de este timestamp (ISO 8601).
+          schema:
+            type: string
+            format: date-time
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        "200":
+          description: Página de pedidos (20 por página, más viejos primero).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrdersResponse"
+        "403":
+          $ref: "#/components/responses/AccessDenied"
+  /v1/orders/{order_id}/status:
+    post:
+      operationId: updateOrderStatus
+      summary: Informar cambio de estado
+      description: |
+        Informa la decisión del local sobre un pedido. `aceptado` mueve el pedido a
+        `en_preparacion`. `rechazado` y `cancelado` requieren `motivo` — **ese texto
+        le llega al cliente final por WhatsApp**, escribilo para esa persona.
+
+        Idempotente por `event_id`. Una transición inválida devuelve `400` con el
+        estado actual del pedido en el mensaje.
+      parameters:
+        - name: order_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StatusRequest"
+            example:
+              event_id: pos-evt-20260730-003
+              occurred_at: "2026-07-30T13:10:00-03:00"
+              status: aceptado
+      responses:
+        "200":
+          description: Estado aplicado (o replay idempotente con el estado vigente).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusResponse"
+        "400":
+          description: Transición inválida o `motivo` faltante.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                code: ERROR_CODE_INPUT_ERROR
+                message: "invalid_transition: aceptado requires status=pendiente (current: entregado)"
+                payload: ""
+        "403":
+          $ref: "#/components/responses/AccessDenied"
+        "404":
+          description: El pedido no existe o no pertenece a esta sucursal.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /v1/sync-log:
+    get:
+      operationId: getSyncLog
+      summary: Historial de sincronizaciones
+      description: |
+        Auditoría de todo lo que tu POS empujó a esta sucursal: corridas de catálogo
+        (con los ítems rechazados y su motivo) y cambios de estado de pedidos.
+      parameters:
+        - name: since
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        "200":
+          description: Página de corridas, más recientes primero (50 por página).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyncLogResponse"
+        "403":
+          $ref: "#/components/responses/AccessDenied"
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: Key por sucursal provista por Xenda (formato `xnd_...`).
+  responses:
+    AccessDenied:
+      description: Key inválida, inactiva o `store_id` que no corresponde a la key.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: ERROR_CODE_ACCESS_DENIED
+            message: Invalid API key.
+            payload: ""
+  schemas:
+    CatalogItemsRequest:
+      type: object
+      required: [event_id, occurred_at, items]
+      properties:
+        event_id:
+          type: string
+          description: ID único del evento en tu sistema. Reintentar con el mismo `event_id` es seguro.
+        occurred_at:
+          type: string
+          format: date-time
+          description: Cuándo ocurrió el cambio en tu sistema. Define el orden entre eventos.
+        store_id:
+          type: integer
+          description: Opcional. Verificación cruzada contra la sucursal de la key (403 si no coincide).
+        action:
+          type: string
+          enum: [upsert, delete]
+          default: upsert
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CatalogItem"
+    CatalogItem:
+      type: object
+      required: [codigo]
+      properties:
+        codigo:
+          type: string
+          description: Tu ID estable del producto. `nombre` es obligatorio en `upsert`.
+        nombre:
+          type: string
+        categoria:
+          type: string
+        precio:
+          type: number
+        deshabilitado:
+          type: boolean
+          default: false
+        max_opciones:
+          type: integer
+          description: |
+            Opcional — cuántas opciones admite el producto (ej. 4 sabores en un kilo).
+            Si tu sistema no maneja este dato, se configura desde la plataforma Xenda.
+    CatalogOptionsRequest:
+      type: object
+      required: [event_id, occurred_at, options]
+      properties:
+        event_id:
+          type: string
+        occurred_at:
+          type: string
+          format: date-time
+        store_id:
+          type: integer
+        action:
+          type: string
+          enum: [upsert, delete]
+          default: upsert
+        options:
+          type: array
+          items:
+            $ref: "#/components/schemas/CatalogOption"
+    CatalogOption:
+      type: object
+      required: [codigo]
+      properties:
+        codigo:
+          type: string
+          description: Tu ID estable de la opción. `nombre` es obligatorio en `upsert`.
+        nombre:
+          type: string
+        grupo:
+          type: string
+          default: Sabores
+          description: Grupo al que pertenece. Se crea automáticamente si no existe.
+        deshabilitado:
+          type: boolean
+          default: false
+        precio_adicional:
+          type: number
+          default: 0
+        orden:
+          type: integer
+          description: Orden de presentación (opcional).
+    IngestResponse:
+      type: object
+      properties:
+        duplicate:
+          type: boolean
+          description: "`true` si el `event_id` ya se había procesado (no se reprocesó nada)."
+        accepted:
+          type: integer
+        skipped_stale:
+          type: integer
+          description: Ítems descartados por ser más viejos que lo ya aplicado.
+        rejected:
+          type: array
+          items:
+            type: object
+            properties:
+              codigo:
+                type: string
+              error:
+                type: string
+    OrdersResponse:
+      type: object
+      properties:
+        orders:
+          type: array
+          items:
+            $ref: "#/components/schemas/Order"
+        page:
+          type: integer
+        per_page:
+          type: integer
+    Order:
+      type: object
+      properties:
+        order_id:
+          type: integer
+        created_at:
+          type: integer
+          description: Epoch millis.
+        status:
+          type: string
+        delivery_type:
+          type: string
+          enum: [pick_up, delivery]
+        delivery_address:
+          type: string
+          nullable: true
+        cliente:
+          type: object
+          properties:
+            nombre:
+              type: string
+            telefono:
+              type: string
+        total:
+          type: number
+        lineas:
+          type: array
+          items:
+            type: object
+            properties:
+              codigo:
+                type: string
+                nullable: true
+                description: Tu código del producto (null si el producto se cargó manualmente en Xenda).
+              nombre:
+                type: string
+              cantidad:
+                type: integer
+              precio_unitario:
+                type: number
+              subtotal:
+                type: number
+              opciones:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    codigo:
+                      type: string
+                      nullable: true
+                    nombre:
+                      type: string
+                    precio_adicional:
+                      type: number
+    StatusRequest:
+      type: object
+      required: [event_id, occurred_at, status]
+      properties:
+        event_id:
+          type: string
+        occurred_at:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [aceptado, rechazado, listo, entregado, cancelado]
+        motivo:
+          type: string
+          description: Obligatorio en `rechazado` y `cancelado`. Le llega al cliente final por WhatsApp.
+    StatusResponse:
+      type: object
+      properties:
+        duplicate:
+          type: boolean
+        order_id:
+          type: integer
+        status:
+          type: string
+          description: Estado resultante (`aceptado` → `en_preparacion`).
+    SyncLogResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              created_at:
+                type: integer
+              provider:
+                type: string
+              event_id:
+                type: string
+              occurred_at:
+                type: integer
+              action:
+                type: string
+                description: "`items/upsert`, `options/delete`, `order_status/aceptado`, etc."
+              payload:
+                description: Contenido de la corrida (ítems empujados o detalle del cambio de estado).
+              result:
+                type: string
+                enum: [ok, partial, error]
+              errors:
+                type: array
+                items:
+                  type: object
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        payload: {}

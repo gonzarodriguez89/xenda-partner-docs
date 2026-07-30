@@ -1,0 +1,67 @@
+---
+title: "Estados del pedido"
+description: "Ciclo de vida del pedido, qué informa tu POS y qué maneja Xenda."
+---
+
+## El ciclo
+
+```
+pendiente ──aceptado──► en_preparacion ──► listo ──► entregado
+    │
+    ├──rechazado──► (terminal, con motivo)
+    └──cancelado──► (terminal, con motivo — en cualquier punto previo a la entrega)
+```
+
+| Estado | Quién lo pone | Notas |
+| --- | --- | --- |
+| `pendiente` | Xenda | El bot cerró el pedido con el cliente; espera confirmación del local |
+| `en_preparacion` | Tu POS (evento `aceptado`) | Aceptar = está en preparación. No hay un estado "aceptado" separado |
+| `listo` | Tu POS | Terminado, esperando retiro o despacho |
+| `entregado` | Tu POS | Cierra el ciclo |
+| `rechazado` | Tu POS | Terminal. Requiere `motivo` |
+| `cancelado` | Tu POS o Xenda | Terminal. Requiere `motivo` cuando lo emite tu POS |
+| `asignado`, `en_camino` | Xenda | Solo pedidos con delivery gestionado por Xenda. Tu POS no los emite, pero puede verlos al consultar |
+
+<Info>
+**Compatibilidad hacia adelante**: pueden aparecer estados nuevos del lado Xenda (por
+ejemplo, etapas de logística). Tratá cualquier estado que no reconozcas como
+informativo — nunca como error.
+</Info>
+
+## Reglas
+
+- **Transiciones válidas**: `aceptado`/`rechazado` solo desde `pendiente`; `listo`
+  desde `en_preparacion`; `entregado` desde cualquier estado en curso; `cancelado`
+  desde cualquier estado previo al cierre. Una transición inválida devuelve `400` con
+  el estado actual en el mensaje (`invalid_transition: ... (current: entregado)`) —
+  útil si tu panel quedó desactualizado respecto del pedido.
+- **Idempotencia**: cada cambio de estado lleva `event_id` único. Reintentar con el
+  mismo `event_id` devuelve `duplicate: true` con el estado vigente, sin re-aplicar.
+- **`occurred_at`**: cuándo ocurrió la acción en tu sistema (el cajero aceptó a las
+  20:15 aunque el request salga 20:16).
+
+## El `motivo` le llega al cliente final
+
+Cuando tu POS rechaza o cancela, **el texto del `motivo` es el insumo con el que el
+bot le explica al cliente por WhatsApp** qué pasó. Escribilo pensando en esa persona:
+
+| ✅ Bien | ❌ Evitar |
+| --- | --- |
+| `"Nos quedamos sin dulce de leche granizado"` | `"no hay"` |
+| `"Cerramos más temprano por feriado"` | `"cerrado"` |
+| `"No llegamos con los pedidos de esta noche"` | `"rechazado"` |
+
+## Pedidos que expiran
+
+En producción, un pedido `pendiente` que el local no acepta en un plazo configurable
+(por defecto **15 minutos**) se cancela automáticamente y el cliente recibe aviso —
+nadie se queda esperando un helado que ningún humano vio. Para tu POS eso significa:
+
+- Un pedido puede desaparecer de `?status=pendiente` entre un poll y el siguiente.
+  Podés consultarlo con `?status=cancelado` si necesitás el detalle.
+- Aceptar rápido es parte de la experiencia: mientras antes llegue tu `aceptado`,
+  antes recibe el cliente su confirmación.
+
+<Info>
+En el **sandbox** la expiración está desactivada, para que puedas probar con calma.
+</Info>

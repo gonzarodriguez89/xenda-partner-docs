@@ -3,6 +3,22 @@ title: "Changelog"
 description: "Novedades y cambios de la Xenda Partner API."
 ---
 
+<Update label="Julio 2026" description="POS Bridge v1">
+**Lanzamiento del POS Bridge** — integración de sistemas de punto de venta con el
+módulo de pedidos por WhatsApp.
+
+- `POST /v1/catalog/items` y `POST /v1/catalog/options`: sincronización de catálogo
+  con idempotencia por `event_id`, orden por `occurred_at` y errores por ítem.
+- `GET /v1/orders`: polling de pedidos con las líneas en códigos del POS.
+- `POST /v1/orders/{order_id}/status`: aceptar / rechazar / listo / entregado /
+  cancelar, con transiciones validadas.
+- `GET /v1/sync-log`: auditoría de sincronizaciones.
+- Key por sucursal (`X-API-Key`) y sandbox con sucursal demo.
+
+Guías: [Introducción](/pos-introduccion) · [Quickstart](/pos-quickstart) ·
+[Estados del pedido](/pos-estados).
+</Update>
+
 <Update label="Julio 2026" description="v1.0">
 **Lanzamiento inicial de la Partner API.**
 

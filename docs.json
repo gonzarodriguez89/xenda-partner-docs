@@ -36,6 +36,19 @@
       {
         "tab": "API Reference",
         "openapi": "openapi.yaml"
+      },
+      {
+        "tab": "POS Bridge",
+        "groups": [
+          {
+            "group": "Integración POS",
+            "pages": ["pos-introduccion", "pos-quickstart", "pos-estados"]
+          }
+        ]
+      },
+      {
+        "tab": "POS API Reference",
+        "openapi": "openapi-pos.yaml"
       }
     ]
   },

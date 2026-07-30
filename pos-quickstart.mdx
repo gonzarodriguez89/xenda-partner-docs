@@ -1,0 +1,121 @@
+---
+title: "Quickstart (10 minutos)"
+description: "Recorré el ciclo completo contra tu sucursal de sandbox: catálogo, pedido pendiente, aceptar, entregar."
+---
+
+Necesitás la **API key de sandbox** que te entregó Xenda (formato `xnd_...`). En los
+ejemplos, reemplazá `$KEY` por tu key.
+
+<Info>
+La sucursal demo ya tiene catálogo cargado y **un pedido pendiente esperándote** —
+tu primer `GET /v1/orders` devuelve un pedido real.
+</Info>
+
+## 1. Mirá el pedido pendiente
+
+```bash
+curl "https://api.automationhub.one/api:07fkGLk_/v1/orders?status=pendiente" \
+  -H "X-API-Key: $KEY"
+```
+
+Vas a recibir algo así — las `lineas` vienen con **tus códigos** (`codigo`), listas
+para matchear contra tu base:
+
+```json
+{
+  "orders": [
+    {
+      "order_id": 83,
+      "status": "pendiente",
+      "delivery_type": "delivery",
+      "delivery_address": "Av. Cabildo 1234, CABA",
+      "cliente": { "nombre": "Maria Demo", "telefono": "+549..." },
+      "total": 14500,
+      "lineas": [
+        {
+          "codigo": "1003", "nombre": "1/2 Kilo",
+          "cantidad": 1, "precio_unitario": 9500, "subtotal": 9500,
+          "opciones": [
+            { "codigo": "S05", "nombre": "Frutilla" },
+            { "codigo": "S06", "nombre": "Limon" }
+          ]
+        },
+        { "codigo": "3001", "nombre": "Palito bombon", "cantidad": 2, "subtotal": 5000, "opciones": [] }
+      ]
+    }
+  ]
+}
+```
+
+## 2. Aceptalo
+
+```bash
+curl -X POST "https://api.automationhub.one/api:07fkGLk_/v1/orders/83/status" \
+  -H "X-API-Key: $KEY" -H "Content-Type: application/json" \
+  -d '{
+    "event_id": "mi-evento-001",
+    "occurred_at": "2026-07-30T12:00:00-03:00",
+    "status": "aceptado"
+  }'
+```
+
+Respuesta: `{"order_id": 83, "status": "en_preparacion"}` — aceptar mueve el pedido
+directo a *en preparación* (y en producción dispara la notificación de WhatsApp al
+cliente).
+
+## 3. Marcalo listo y entregado
+
+```bash
+curl -X POST "https://api.automationhub.one/api:07fkGLk_/v1/orders/83/status" \
+  -H "X-API-Key: $KEY" -H "Content-Type: application/json" \
+  -d '{"event_id": "mi-evento-002", "occurred_at": "2026-07-30T12:20:00-03:00", "status": "listo"}'
+
+curl -X POST "https://api.automationhub.one/api:07fkGLk_/v1/orders/83/status" \
+  -H "X-API-Key: $KEY" -H "Content-Type: application/json" \
+  -d '{"event_id": "mi-evento-003", "occurred_at": "2026-07-30T12:45:00-03:00", "status": "entregado"}'
+```
+
+## 4. Empujá un cambio de precio
+
+```bash
+curl -X POST "https://api.automationhub.one/api:07fkGLk_/v1/catalog/items" \
+  -H "X-API-Key: $KEY" -H "Content-Type: application/json" \
+  -d '{
+    "event_id": "mi-evento-004",
+    "occurred_at": "2026-07-30T13:00:00-03:00",
+    "action": "upsert",
+    "items": [
+      { "codigo": "1001", "nombre": "Kilo de helado", "categoria": "Helados",
+        "precio": 16000, "deshabilitado": false }
+    ]
+  }'
+```
+
+Respuesta: `{"accepted": 1, "rejected": [], "skipped_stale": 0}`. Desde ese momento el
+bot cotiza el kilo a $16.000.
+
+## 5. Probá los reintentos (idempotencia)
+
+Repetí el request anterior **con el mismo `event_id`**:
+
+```bash
+# misma llamada que el paso 4 → {"duplicate": true, "accepted": 0, ...}
+```
+
+Nada se reprocesa. Ante cualquier duda de red, reintentar con el mismo `event_id` es
+siempre seguro.
+
+## 6. Auditá tus sincronizaciones
+
+```bash
+curl "https://api.automationhub.one/api:07fkGLk_/v1/sync-log" -H "X-API-Key: $KEY"
+```
+
+Cada corrida de catálogo y cada cambio de estado que hiciste queda registrado, con los
+ítems rechazados y el motivo si algo falló.
+
+---
+
+Eso es todo el ciclo. Los detalles finos (estados, transiciones válidas, reglas de
+sincronización) están en [Estados del pedido](/pos-estados) y en la referencia de la
+API.

@@ -1,0 +1,108 @@
+---
+title: "POS Bridge — Introducción"
+description: "Integrá tu sistema de punto de venta con Xenda: catálogo sincronizado, pedidos del bot y cambios de estado."
+---
+
+El **POS Bridge** conecta un sistema de punto de venta con el módulo de pedidos por
+WhatsApp de Xenda. El bot toma pedidos conversando con el cliente final, los valida y
+cotiza contra el catálogo que tu sistema mantiene sincronizado, y tu POS los levanta
+para que el local los acepte, prepare y entregue.
+
+## Cómo fluye la información
+
+**Todo el tráfico lo origina tu sistema.** Xenda nunca llama a tu POS ni accede a tus
+bases: tu sistema empuja el catálogo, consulta los pedidos y informa los cambios de
+estado, siempre contra esta API.
+
+```
+TU POS  ──► POST /v1/catalog/items     empujás productos (alta, precio, baja)
+TU POS  ──► POST /v1/catalog/options   empujás opciones/sabores
+TU POS  ──► GET  /v1/orders            consultás pedidos nuevos (polling)
+TU POS  ──► POST /v1/orders/{id}/status  informás aceptado / listo / entregado...
+TU POS  ──► GET  /v1/sync-log          auditás tus sincronizaciones
+```
+
+Un intervalo de polling de **1 a 2 minutos** es suficiente; la respuesta está pensada
+para ser liviana.
+
+## Autenticación: una key por sucursal
+
+Cada sucursal tiene su propia API key (`xnd_...`). La key **es** la sucursal: todo lo
+que hagas con ella queda scopeado a ese local, y no puede tocar ningún otro. Se envía
+en todas las llamadas:
+
+```
+X-API-Key: xnd_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+Base URL:
+
+```
+https://api.automationhub.one/api:07fkGLk_
+```
+
+El campo `store_id` del body es opcional y funciona como verificación cruzada: si lo
+mandás y no coincide con la sucursal de la key, la llamada se rechaza con `403`. Sirve
+para detectar el clásico error de configuración de "pegué la key del local equivocado".
+
+<Warning>
+Tratá cada key como una credencial sensible. Si una key se compromete, avisanos y la
+rotamos: solo afecta a esa sucursal.
+</Warning>
+
+## Identificadores: tus códigos mandan
+
+Los productos y opciones se identifican por el **`codigo`**: un string estable que
+define tu sistema (el ID interno de tu base). Xenda guarda el mapeo `codigo ↔ producto`
+por sucursal, y los pedidos vuelven con esos mismos códigos — tu POS nunca necesita
+conocer IDs de Xenda.
+
+Reglas del `codigo`:
+
+- Estable en el tiempo (si cambia, se interpreta como un producto nuevo).
+- Único dentro de la sucursal por tipo (producto u opción).
+- Cualquier string te sirve: `"1001"`, `"HEL-KILO"`, un hash — lo que ya uses.
+
+## Sincronización del catálogo
+
+- **Eventos durante el día**: cambio de precio, alta de producto, baja de un sabor —
+  empujás el evento en el momento y el bot deja de ofrecer lo que ya no está.
+- **Sincronización de cierre/apertura**: podés empujar el catálogo completo como un
+  lote grande; los ítems sin cambios simplemente se re-aplican.
+- **Idempotencia**: cada request lleva un `event_id` único. Si reintentás con el mismo
+  `event_id`, devolvemos `duplicate: true` y no se reprocesa nada — reintentar es
+  siempre seguro.
+- **Orden de eventos**: cada request lleva `occurred_at` (cuándo ocurrió el cambio en
+  tu sistema). Si un evento llega tarde y hay uno más nuevo ya aplicado, el viejo se
+  descarta (`skipped_stale`) — un cierre de caja demorado nunca pisa un cambio de
+  precio posterior.
+- **Errores por ítem**: un ítem inválido no rechaza el lote. La respuesta indica
+  `accepted` y `rejected[{codigo, error}]` para que reproceses solo lo que falló.
+- **Bajas**: `action: "delete"` desactiva el ítem (deja de ofrecerse). Nunca se borra
+  físicamente: los pedidos históricos siguen siendo legibles.
+
+## Lo que NO tenés que construir
+
+La integración está pensada para que tu lado sea lo más chico posible:
+
+- **Sin webhooks**: no exponés ningún endpoint ni URL pública. Tu POS llama, nunca
+  es llamado.
+- **Sin OAuth ni tokens que renovar**: una key estática por sucursal en un header.
+- **Sin IDs de Xenda**: trabajás siempre con tus propios códigos. El mapeo lo
+  mantenemos nosotros.
+- **Sin manejo de conversaciones**: el bot, WhatsApp, las notificaciones al cliente
+  final y la plataforma de gestión son 100% lado Xenda.
+
+Tu integración completa son 3 llamadas en el camino crítico: empujar catálogo,
+consultar pedidos, informar estados.
+
+## Sandbox
+
+Te entregamos una key de sandbox apuntada a una **sucursal demo con catálogo y pedidos
+de prueba**. Es un entorno real (misma API, misma URL) pero aislado: todo lo que hagas
+queda contenido en esa sucursal. Podés empujar catálogo, aceptar y rechazar pedidos,
+probar reintentos y romper lo que necesites. Empezá por el
+[Quickstart](/pos-quickstart): en 10 minutos recorrés el ciclo completo.
+
+Cuando el piloto pase a producción, la sucursal real recibe su propia key — mismo
+contrato, cero cambios de código.
