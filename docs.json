@@ -17,7 +17,7 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Guías",
+        "tab": "Campañas de WhatsApp",
         "groups": [
           {
             "group": "Empezar",
@@ -28,27 +28,32 @@
             "pages": ["respuestas-webhook"]
           },
           {
-            "group": "Novedades",
-            "pages": ["changelog"]
+            "group": "API Reference",
+            "openapi": "openapi.yaml"
           }
         ]
-      },
-      {
-        "tab": "API Reference",
-        "openapi": "openapi.yaml"
       },
       {
         "tab": "POS Bridge",
         "groups": [
           {
-            "group": "Integración POS",
+            "group": "Empezar",
             "pages": ["pos-introduccion", "pos-quickstart", "pos-estados"]
+          },
+          {
+            "group": "API Reference",
+            "openapi": "openapi-pos.yaml"
           }
         ]
       },
       {
-        "tab": "POS API Reference",
-        "openapi": "openapi-pos.yaml"
+        "tab": "Novedades",
+        "groups": [
+          {
+            "group": "Novedades",
+            "pages": ["changelog"]
+          }
+        ]
       }
     ]
   },

@@ -50,6 +50,13 @@ Tratá cada key como una credencial sensible. Si una key se compromete, avisanos
 rotamos: solo afecta a esa sucursal.
 </Warning>
 
+### Límite de requests
+
+Cada key admite hasta **120 requests por minuto** — muy por encima del uso normal
+(un poll cada 1-2 minutos + eventos de catálogo). Si te pasás, recibís `403` con
+`rate_limited: retry in Xs`; esperá ese tiempo y reintentá. Si tu integración
+necesita más, hablemos: el límite es configurable por sucursal.
+
 ## Identificadores: tus códigos mandan
 
 Los productos y opciones se identifican por el **`codigo`**: un string estable que
