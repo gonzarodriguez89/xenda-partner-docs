@@ -3,6 +3,24 @@ title: "Changelog"
 description: "Novedades y cambios de la Xenda Partner API."
 ---
 
+<Update label="Julio 2026" description="POS Bridge — domicilio y teléfono estructurados">
+**Feedback de la primera ronda de integración, aplicado.**
+
+- `GET /v1/orders`: cada pedido incluye ahora `domicilio` estructurado (`calle`,
+  `numero`, `piso_depto`, `localidad`, `referencia`) además de `delivery_address`
+  completo como respaldo.
+- `GET /v1/orders`: el teléfono del cliente viene también separado en
+  `telefono_pais` (default `"54"`), `telefono_area` y `telefono_numero` (limpio,
+  sin guiones ni espacios).
+- `POST /v1/orders/{order_id}/status`: nuevo evento `asignado` — si tu flujo asigna
+  repartidor directo tras aceptar, podés saltear `listo`
+  (`en_preparacion → asignado → entregado`).
+- `GET /v1/orders?status=`: se pueden consultar también `asignado` y `en_camino`.
+
+Los campos nuevos son aditivos: si ya integraste contra el contrato anterior, nada
+se rompe.
+</Update>
+
 <Update label="Julio 2026" description="POS Bridge v1">
 **Lanzamiento del POS Bridge** — integración de sistemas de punto de venta con el
 módulo de pedidos por WhatsApp.

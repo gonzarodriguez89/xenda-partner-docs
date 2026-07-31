@@ -94,7 +94,7 @@ paths:
           in: query
           schema:
             type: string
-            enum: [pendiente, en_preparacion, listo, entregado, rechazado, cancelado]
+            enum: [pendiente, en_preparacion, listo, asignado, en_camino, entregado, rechazado, cancelado]
             default: pendiente
         - name: since
           in: query
@@ -122,8 +122,10 @@ paths:
       summary: Informar cambio de estado
       description: |
         Informa la decisión del local sobre un pedido. `aceptado` mueve el pedido a
-        `en_preparacion`. `rechazado` y `cancelado` requieren `motivo` — **ese texto
-        le llega al cliente final por WhatsApp**, escribilo para esa persona.
+        `en_preparacion`. Si tu sistema asigna repartidor, informá `asignado` (podés
+        saltear `listo`); al entregar, `entregado`. `rechazado` y `cancelado` requieren
+        `motivo` — **ese texto le llega al cliente final por WhatsApp**, escribilo
+        para esa persona.
 
         Idempotente por `event_id`. Una transición inválida devuelve `400` con el
         estado actual del pedido en el mensaje.
@@ -345,6 +347,30 @@ components:
         delivery_address:
           type: string
           nullable: true
+          description: Domicilio completo en una línea (respaldo del objeto `domicilio`).
+        domicilio:
+          type: object
+          description: |
+            Domicilio estructurado (solo `delivery`). Si el dato original no pudo
+            separarse, los campos vienen en null y `delivery_address` trae el texto
+            completo.
+          properties:
+            calle:
+              type: string
+              nullable: true
+            numero:
+              type: string
+              nullable: true
+            piso_depto:
+              type: string
+              nullable: true
+            localidad:
+              type: string
+              nullable: true
+            referencia:
+              type: string
+              nullable: true
+              description: Indicaciones extra del cliente ("portón negro, tocar timbre").
         cliente:
           type: object
           properties:
@@ -352,6 +378,19 @@ components:
               type: string
             telefono:
               type: string
+              description: Número completo formato internacional (respaldo).
+            telefono_pais:
+              type: string
+              nullable: true
+              description: Código de país sin "+" (default "54").
+            telefono_area:
+              type: string
+              nullable: true
+              description: Código de área sin 0 ("11", "341", "2966").
+            telefono_numero:
+              type: string
+              nullable: true
+              description: Número local limpio, sin guiones ni espacios.
         total:
           type: number
         lineas:
@@ -394,7 +433,7 @@ components:
           format: date-time
         status:
           type: string
-          enum: [aceptado, rechazado, listo, entregado, cancelado]
+          enum: [aceptado, rechazado, listo, asignado, entregado, cancelado]
         motivo:
           type: string
           description: Obligatorio en `rechazado` y `cancelado`. Le llega al cliente final por WhatsApp.

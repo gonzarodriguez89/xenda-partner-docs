@@ -28,8 +28,15 @@ para matchear contra tu base:
       "order_id": 83,
       "status": "pendiente",
       "delivery_type": "delivery",
-      "delivery_address": "Av. Cabildo 1234, CABA",
-      "cliente": { "nombre": "Maria Demo", "telefono": "+549..." },
+      "delivery_address": "Av. Cabildo 1234, 3B, CABA",
+      "domicilio": {
+        "calle": "Av. Cabildo", "numero": "1234", "piso_depto": "3B",
+        "localidad": "CABA", "referencia": "tocar timbre 3B"
+      },
+      "cliente": {
+        "nombre": "Maria Demo", "telefono": "+549...",
+        "telefono_pais": "54", "telefono_area": "11", "telefono_numero": "40723113"
+      },
       "total": 14500,
       "lineas": [
         {

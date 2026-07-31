@@ -7,6 +7,8 @@ description: "Ciclo de vida del pedido, qué informa tu POS y qué maneja Xenda.
 
 ```
 pendiente ──aceptado──► en_preparacion ──► listo ──► entregado
+    │                        │                ▲
+    │                        └──► asignado ───┘──► entregado
     │
     ├──rechazado──► (terminal, con motivo)
     └──cancelado──► (terminal, con motivo — en cualquier punto previo a la entrega)
@@ -16,11 +18,12 @@ pendiente ──aceptado──► en_preparacion ──► listo ──► entre
 | --- | --- | --- |
 | `pendiente` | Xenda | El bot cerró el pedido con el cliente; espera confirmación del local |
 | `en_preparacion` | Tu POS (evento `aceptado`) | Aceptar = está en preparación. No hay un estado "aceptado" separado |
-| `listo` | Tu POS | Terminado, esperando retiro o despacho |
+| `listo` | Tu POS | Terminado, esperando retiro o despacho. Opcional: si tu flujo pasa directo al repartidor, podés saltearlo |
+| `asignado` | Tu POS o Xenda | Repartidor asignado. Tu POS puede emitirlo desde `en_preparacion` o `listo` |
 | `entregado` | Tu POS | Cierra el ciclo |
 | `rechazado` | Tu POS | Terminal. Requiere `motivo` |
 | `cancelado` | Tu POS o Xenda | Terminal. Requiere `motivo` cuando lo emite tu POS |
-| `asignado`, `en_camino` | Xenda | Solo pedidos con delivery gestionado por Xenda. Tu POS no los emite, pero puede verlos al consultar |
+| `en_camino` | Xenda | Solo pedidos con delivery gestionado por Xenda. Tu POS no lo emite, pero puede verlo al consultar |
 
 <Info>
 **Compatibilidad hacia adelante**: pueden aparecer estados nuevos del lado Xenda (por
@@ -31,7 +34,8 @@ informativo — nunca como error.
 ## Reglas
 
 - **Transiciones válidas**: `aceptado`/`rechazado` solo desde `pendiente`; `listo`
-  desde `en_preparacion`; `entregado` desde cualquier estado en curso; `cancelado`
+  desde `en_preparacion`; `asignado` desde `en_preparacion` o `listo`;
+  `entregado` desde cualquier estado en curso; `cancelado`
   desde cualquier estado previo al cierre. Una transición inválida devuelve `400` con
   el estado actual en el mensaje (`invalid_transition: ... (current: entregado)`) —
   útil si tu panel quedó desactualizado respecto del pedido.
