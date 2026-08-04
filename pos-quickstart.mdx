@@ -101,6 +101,12 @@ curl -X POST "https://api.automationhub.one/api:07fkGLk_/v1/catalog/items" \
 Respuesta: `{"accepted": 1, "rejected": [], "skipped_stale": 0}`. Desde ese momento el
 bot cotiza el kilo a $16.000.
 
+<Info>
+**Alta y modificación son el mismo request**: es un *upsert* por `codigo`. Si el
+`codigo` no existe lo creamos, si existe lo actualizamos — la distinción la hacemos
+nosotros. Mandá siempre el objeto completo del producto.
+</Info>
+
 ## 5. Probá los reintentos (idempotencia)
 
 Repetí el request anterior **con el mismo `event_id`**:

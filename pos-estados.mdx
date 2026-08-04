@@ -33,6 +33,9 @@ informativo — nunca como error.
 
 ## Reglas
 
+- **Aceptación implícita**: mandar `listo`, `asignado` o `entregado` sobre un pedido
+  `pendiente` lo acepta y lo mueve en un solo evento — no hace falta el `aceptado`
+  previo. Queda auditado en el historial como aceptación implícita.
 - **Transiciones válidas**: `aceptado`/`rechazado` solo desde `pendiente`; `listo`
   desde `en_preparacion`; `asignado` desde `en_preparacion` o `listo`;
   `entregado` desde cualquier estado en curso; `cancelado`

@@ -3,6 +3,21 @@ title: "Changelog"
 description: "Novedades y cambios de la Xenda Partner API."
 ---
 
+<Update label="Agosto 2026" description="POS Bridge — pago, fecha legible y aceptación implícita">
+**Segunda ronda de feedback de integración, aplicada.**
+
+- `GET /v1/orders`: nuevo objeto `pago` (`modo: en_entrega | online`, `pagado`) para el
+  cierre de caja — hoy todo nace `en_entrega`; cuando un local active pago online por
+  WhatsApp llegará `online / pagado: true` sin cambios de contrato.
+- `GET /v1/orders`: nuevo campo `costo_envio` (fijo por local, **incluido en `total`**)
+  y `created_at_iso` (ISO 8601 con zona del local) junto al epoch existente.
+- `POST /v1/orders/{order_id}/status`: **aceptación implícita** — `listo`, `asignado` o
+  `entregado` sobre un pedido `pendiente` lo acepta y lo mueve en un solo evento.
+  Los pedidos cerrados siguen siendo inmutables.
+
+Cambios aditivos: nada de lo anterior se rompe.
+</Update>
+
 <Update label="Julio 2026" description="POS Bridge — domicilio y teléfono estructurados">
 **Feedback de la primera ronda de integración, aplicado.**
 

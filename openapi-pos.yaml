@@ -127,6 +127,11 @@ paths:
         `motivo` — **ese texto le llega al cliente final por WhatsApp**, escribilo
         para esa persona.
 
+        **Aceptación implícita**: si mandás `listo`, `asignado` o `entregado` sobre un
+        pedido `pendiente`, lo tomamos como aceptado + el estado que enviaste, en un
+        solo evento (no hace falta mandar `aceptado` antes). Los pedidos ya cerrados
+        (`entregado`/`rechazado`/`cancelado`) no admiten más cambios.
+
         Idempotente por `event_id`. Una transición inválida devuelve `400` con el
         estado actual del pedido en el mensaje.
       parameters:
@@ -338,7 +343,10 @@ components:
           type: integer
         created_at:
           type: integer
-          description: Epoch millis.
+          description: Epoch millis (para cálculos).
+        created_at_iso:
+          type: string
+          description: La misma fecha en ISO 8601 con zona del local (ej. "2026-08-04T11:05:36-03:00").
         status:
           type: string
         delivery_type:
@@ -391,6 +399,23 @@ components:
               type: string
               nullable: true
               description: Número local limpio, sin guiones ni espacios.
+        pago:
+          type: object
+          description: |
+            Cómo se paga el pedido — pensado para el cierre de caja. Hoy todos los
+            pedidos nacen `en_entrega` / `pagado: false`; cuando un local active el
+            pago online por WhatsApp (Mercado Pago), llegará `online` / `pagado: true`.
+          properties:
+            modo:
+              type: string
+              enum: [en_entrega, online]
+            pagado:
+              type: boolean
+        costo_envio:
+          type: number
+          description: |
+            Costo de envío del pedido (0 en retiro o si el local no lo configuró).
+            **Ya está incluido en `total`** — no sumarlo de nuevo.
         total:
           type: number
         lineas:
