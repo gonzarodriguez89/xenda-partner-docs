@@ -116,6 +116,59 @@ paths:
                 $ref: "#/components/schemas/OrdersResponse"
         "403":
           $ref: "#/components/responses/AccessDenied"
+  /v1/test/orders:
+    post:
+      operationId: createTestOrder
+      summary: Crear un pedido de prueba
+      description: |
+        Genera un pedido en la sucursal de la key **usando tus códigos** de producto
+        y sabor — el mismo circuito de validación y cotización que usa el bot de
+        WhatsApp (precios y total los calcula Xenda contra el catálogo sincronizado).
+        El pedido nace `pendiente` y aparece en tu próximo poll de `GET /v1/orders`.
+
+        Herramienta de testing de integración: en producción los pedidos reales los
+        crea el bot a partir de la conversación con el cliente.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TestOrderRequest"
+            example:
+              nombre_cliente: Cliente de prueba
+              delivery_type: delivery
+              calle: Av. Corrientes
+              numero: "3247"
+              piso_depto: 5A
+              localidad: Almagro
+              items:
+                - codigo: "2"
+                  cantidad: 1
+                  sabores: ["744", "731"]
+      responses:
+        "200":
+          description: Pedido creado, queda `pendiente`.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  order_id:
+                    type: integer
+                  status:
+                    type: string
+                  costo_envio:
+                    type: number
+                  total:
+                    type: number
+        "400":
+          description: Código desconocido, sabor no disponible o reglas de opciones incumplidas.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          $ref: "#/components/responses/AccessDenied"
   /v1/orders/{order_id}/status:
     post:
       operationId: updateOrderStatus
@@ -447,6 +500,47 @@ components:
                       type: string
                     precio_adicional:
                       type: number
+    TestOrderRequest:
+      type: object
+      required: [items]
+      properties:
+        nombre_cliente:
+          type: string
+          description: Default "Pedido de prueba".
+        telefono:
+          type: string
+          description: Formato internacional. Default un número dummy.
+        delivery_type:
+          type: string
+          enum: [pick_up, delivery]
+          default: pick_up
+        calle:
+          type: string
+        numero:
+          type: string
+        piso_depto:
+          type: string
+        localidad:
+          type: string
+        referencia:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+            required: [codigo]
+            properties:
+              codigo:
+                type: string
+                description: Tu código de producto.
+              cantidad:
+                type: integer
+                default: 1
+              sabores:
+                type: array
+                items:
+                  type: string
+                description: Tus códigos de sabor/opción (respeta mín/máx del producto).
     StatusRequest:
       type: object
       required: [event_id, occurred_at, status]
