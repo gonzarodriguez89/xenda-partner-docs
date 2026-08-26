@@ -437,6 +437,8 @@ components:
           properties:
             nombre:
               type: string
+              nullable: true
+              description: Puede venir null si el cliente no dio su nombre — mostrar "Cliente".
             telefono:
               type: string
               description: Número completo formato internacional (respaldo).
@@ -464,6 +466,11 @@ components:
               enum: [en_entrega, online]
             pagado:
               type: boolean
+            monto:
+              type: number
+              description: |
+                Monto a cobrar (igual a `total`, envío incluido; 0 si no hay total).
+                Pensado para calcular el vuelto en pagos en efectivo.
         costo_envio:
           type: number
           description: |

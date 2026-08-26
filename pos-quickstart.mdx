@@ -37,6 +37,8 @@ para matchear contra tu base:
         "nombre": "Maria Demo", "telefono": "+549...",
         "telefono_pais": "54", "telefono_area": "11", "telefono_numero": "40723113"
       },
+      "pago": { "modo": "en_entrega", "pagado": false, "monto": 14500 },
+      "costo_envio": 0,
       "total": 14500,
       "lineas": [
         {
@@ -53,6 +55,24 @@ para matchear contra tu base:
   ]
 }
 ```
+
+<Note>
+**Qué puede venir en `null`** — tratá estos campos como opcionales y poné tu propio
+valor por defecto:
+
+- `delivery_address` y **todo el objeto `domicilio`** (`calle`, `numero`, `piso_depto`,
+  `localidad`, `referencia`): en retiro por el local (`delivery_type: "pick_up"`) vienen
+  todos en null; en envíos, `piso_depto` y `referencia` son opcionales, y si el domicilio
+  no pudo separarse los campos vienen null con el texto completo en `delivery_address`.
+- `cliente.nombre`: si el cliente no dio su nombre — mostrá "Cliente".
+- `cliente.telefono_pais` / `telefono_area` / `telefono_numero`: null solo en pedidos
+  anteriores a julio 2026; los nuevos vienen siempre poblados.
+- `lineas[].codigo` y `opciones[].codigo`: null si el producto o sabor se cargó a mano
+  en Xenda (sin código tuyo). Con el catálogo sincronizado desde tu POS, siempre vienen.
+
+Todo lo demás viene siempre con valor: `pago.modo` default `"en_entrega"`,
+`pago.pagado` default `false`, `pago.monto` y `costo_envio` default `0`.
+</Note>
 
 ## 2. Aceptalo
 

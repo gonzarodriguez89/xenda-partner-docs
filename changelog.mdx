@@ -3,6 +3,16 @@ title: "Changelog"
 description: "Novedades y cambios de la Xenda Partner API."
 ---
 
+<Update label="Agosto 2026" description="POS Bridge — monto del pago y guía de nulls">
+- `GET /v1/orders`: el objeto `pago` suma **`monto`** (igual a `total`, envío incluido;
+  `0` si no hay total) — para calcular el vuelto en pagos en efectivo.
+- Nueva guía **"Qué puede venir en null"** en el quickstart: qué campos del pedido
+  pueden llegar en `null` y qué default usar en cada caso. El OpenAPI marca ahora
+  todos los campos anulables (`nullable: true`), incluido `cliente.nombre`.
+
+Cambios aditivos: nada de lo anterior se rompe.
+</Update>
+
 <Update label="Agosto 2026" description="POS Bridge — pedidos de prueba">
 **`POST /v1/test/orders`** — generá pedidos de prueba en tu sucursal sandbox usando
 **tus códigos** de producto y sabor. Mismo circuito de validación y cotización que el
