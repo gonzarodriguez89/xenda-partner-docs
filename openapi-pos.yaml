@@ -389,6 +389,17 @@ components:
           type: integer
         per_page:
           type: integer
+        total:
+          type: integer
+          description: |
+            Cantidad total de pedidos en ese estado (no solo los de esta página).
+            Si es mayor que `per_page`, hay más para traer.
+        has_more:
+          type: boolean
+          description: |
+            `true` si queda al menos una página más. Pedila con `page=2`, `page=3`, etc.
+            Los pedidos vienen del más viejo al más nuevo, así que la página 1 siempre
+            trae los más urgentes.
     Order:
       type: object
       properties:

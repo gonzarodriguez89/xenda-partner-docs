@@ -3,6 +3,22 @@ title: "Changelog"
 description: "Novedades y cambios de la Xenda Partner API."
 ---
 
+<Update label="Agosto 2026" description="POS Bridge — backlog visible, reintentos y semántica de errores">
+- `GET /v1/orders`: la respuesta suma **`total`** (cuántos pedidos hay en ese estado,
+  no solo los de esta página) y **`has_more`**. Antes, con 35 pendientes veías lo mismo
+  que con 20 y nada te indicaba pedir `page=2`.
+- `POST /v1/orders/{order_id}/status`: **un evento rechazado ya no consume su
+  `event_id`**. Si el request falla por validación (por ejemplo, falta el `motivo`),
+  podés corregirlo y reintentar con el mismo id, y esta vez se aplica. Antes ese
+  reintento devolvía `duplicate: true` sin aplicar el cambio.
+- Guía nueva en **Estados**: qué significa cada código de error (`400` / `403`
+  rate-limit / `403` key inválida / `404`) y cuál conviene reintentar, más una nota
+  sobre las cancelaciones que no salen de tu POS (el cliente cancela, o expira el
+  pedido) y cómo detectarlas.
+
+Cambios aditivos: nada de lo anterior se rompe.
+</Update>
+
 <Update label="Agosto 2026" description="POS Bridge — monto del pago y guía de nulls">
 - `GET /v1/orders`: el objeto `pago` suma **`monto`** (igual a `total`, envío incluido;
   `0` si no hay total) — para calcular el vuelto en pagos en efectivo.

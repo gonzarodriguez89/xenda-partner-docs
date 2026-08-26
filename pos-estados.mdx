@@ -44,8 +44,37 @@ informativo — nunca como error.
   útil si tu panel quedó desactualizado respecto del pedido.
 - **Idempotencia**: cada cambio de estado lleva `event_id` único. Reintentar con el
   mismo `event_id` devuelve `duplicate: true` con el estado vigente, sin re-aplicar.
+  Un evento **rechazado** (por ejemplo, sin `motivo`) **no consume su `event_id`**:
+  podés corregir el payload y reintentar con el mismo id, y esta vez se aplica.
 - **`occurred_at`**: cuándo ocurrió la acción en tu sistema (el cajero aceptó a las
   20:15 aunque el request salga 20:16).
+
+<Note>
+**Cómo distinguir los errores.** Todos vienen con un `message` legible; esto es lo que
+significa cada código:
+
+- **`400`** — el pedido o el payload no permiten esa acción: transición inválida
+  (`invalid_transition: ... (current: entregado)`), falta un campo, o el `motivo` es
+  obligatorio. **No reintentar igual**: corregí y volvé a mandar (podés reusar el
+  mismo `event_id`).
+- **`403` con el mensaje empezando en `rate_limited:`** — superaste el límite de
+  requests por minuto de tu key. El mensaje incluye en cuántos segundos reintentar.
+  Es temporal: **reintentá**, no es un problema de credenciales.
+- **`403` con `Invalid API key`** — la key es incorrecta, fue revocada, o estás
+  pegándole a un endpoint que no corresponde a su alcance.
+- **`404`** — el pedido no existe o no pertenece a tu sucursal.
+
+Si tu cliente HTTP trata todo `403` como "credenciales inválidas", separá el caso del
+rate limit por el prefijo del mensaje.
+</Note>
+
+## Cancelaciones que no salen de tu POS
+
+Un pedido puede cerrarse sin que vos lo pidas: **el cliente lo cancela** desde WhatsApp
+mientras está `pendiente`, o **expira** por el timer (más abajo). No hay push hacia tu
+sistema, así que si tu flujo depende de enterarte, hay dos caminos: poll periódico de
+`GET /v1/orders?status=cancelado` además del de `pendiente`, o tratar el `400` de
+`invalid_transition` como señal de que el pedido ya se cerró y refrescar su estado.
 
 ## El `motivo` le llega al cliente final
 
