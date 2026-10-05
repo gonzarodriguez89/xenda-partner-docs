@@ -46,8 +46,9 @@ mandás y no coincide con la sucursal de la key, la llamada se rechaza con `403`
 para detectar el clásico error de configuración de "pegué la key del local equivocado".
 
 <Warning>
-Tratá cada key como una credencial sensible. Si una key se compromete, avisanos y la
-rotamos: solo afecta a esa sucursal.
+Tratá cada key como una credencial sensible. Si una key se compromete, avisanos:
+emitimos una nueva y revocamos la anterior. Solo afecta a esa sucursal. Ver
+[Pasar una sucursal a producción](#pasar-una-sucursal-a-producción).
 </Warning>
 
 ### Límite de requests
@@ -113,3 +114,65 @@ probar reintentos y romper lo que necesites. Empezá por el
 
 Cuando el piloto pase a producción, la sucursal real recibe su propia key — mismo
 contrato, cero cambios de código.
+
+## Pasar una sucursal a producción
+
+El alta de cada sucursal la hace Xenda. Esto es lo que recibís y lo que hay que dejar
+listo antes de que el bot empiece a tomar pedidos.
+
+### 1. Credenciales
+
+Por cada sucursal te entregamos tres datos:
+
+| Dato | Para qué |
+| --- | --- |
+| API key (`xnd_...`) | Va en el header `X-API-Key` de todas las llamadas |
+| Número de sucursal (`store_id`) | Opcional en el body, como verificación cruzada |
+| Base URL | La misma del sandbox: `https://api.automationhub.one/api:07fkGLk_` |
+
+- **La key se muestra una sola vez.** Xenda no guarda el valor: si se pierde, se emite
+  otra.
+- **Una sucursal puede tener varias keys activas a la vez** (por ejemplo, una por
+  computadora). Cada una tiene su propio límite de requests y se revoca por separado.
+
+### 2. Carga inicial del catálogo
+
+Dos caminos, a elección:
+
+- Empujás el catálogo completo por la API, como un lote grande de productos y otro de
+  opciones.
+- Nos mandás un CSV de productos (`Codigo, Nombre, Categoria, Precio, Deshabilitado`) y
+  otro de sabores (`Codigo, Nombre, NoUsar`) y lo cargamos nosotros con tu key, por el
+  mismo camino que usaría tu sistema.
+
+### 3. Qué productos llevan sabores
+
+Empujar opciones **no las asocia a ningún producto**: `POST /v1/catalog/options` carga
+el listado de sabores de la sucursal, y `max_opciones` en el producto dice cuántos
+admite. Qué productos llevan opciones, de qué grupo y cuántas como mínimo se configura
+del lado Xenda.
+
+Es un paso de la puesta en marcha que hacemos con el local después de la carga inicial.
+Si más adelante sumás un producto nuevo que lleva sabores, avisanos o avisale al local:
+hasta que se configure, ese producto no ofrece sabores.
+
+### 4. Prueba de punta a punta
+
+`POST /v1/test/orders` también funciona con la key de una sucursal real, y es la forma
+más directa de validar la instalación. Tené en cuenta que ahí **el pedido es real**:
+aparece en la plataforma del local, y cada cambio de estado intenta avisarle por
+WhatsApp al `telefono` que mandes. Usá un teléfono tuyo y cerrá el pedido al terminar.
+
+### 5. Cambiar una key
+
+1. Pedinos una key nueva para la sucursal.
+2. Instalala. La anterior sigue funcionando mientras tanto: no hay corte.
+3. Avisanos y revocamos la anterior. La revocación es inmediata: la siguiente llamada
+   con esa key recibe `403 Invalid API key`.
+
+<Note>
+La deduplicación por `event_id` es **por key**. Después de cambiar de key, un evento
+viejo reenviado con la key nueva se procesa como si fuera nuevo: no reenvíes lotes
+anteriores al cambio. El orden por `occurred_at` sigue protegiendo el catálogo (un
+evento más viejo que el dato vigente se descarta).
+</Note>

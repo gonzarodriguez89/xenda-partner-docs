@@ -3,6 +3,25 @@ title: "Changelog"
 description: "Novedades y cambios de la Xenda Partner API."
 ---
 
+<Update label="Octubre 2026" description="POS Bridge — puesta en producción de una sucursal y cierres desde Xenda">
+Sin cambios en la API: mismo contrato, mismas respuestas. Cambia lo que el local puede
+hacer del lado Xenda y se completa la documentación.
+
+- **El local solo puede cerrar pedidos desde Xenda.** En una sucursal conectada a un
+  POS, la plataforma Xenda ya no deja aceptar, rechazar ni mover pasos intermedios:
+  solo marcar `entregado` o cancelar. Los estados los mueve tu sistema. Si llega un
+  evento tuyo después de ese cierre, recibe el `400 invalid_transition` de siempre.
+- **Corrección en Estados — tiempos automáticos.** La guía decía que un pedido
+  pendiente expira "por defecto a los 15 minutos". No es así: la cancelación de
+  pendientes y el cierre de pedidos en curso son opciones de cada local y **vienen
+  apagadas**. La sección explica qué ve tu POS si el local las activa.
+- **Guía nueva: Pasar una sucursal a producción** (en la Introducción): qué
+  credenciales recibís, carga inicial por API o CSV, cómo se configura qué productos
+  llevan sabores, prueba de punta a punta y cómo cambiar una key sin corte.
+- `POST /v1/test/orders`: aclarado que funciona con cualquier key de sucursal y que en
+  una sucursal real el pedido es real.
+</Update>
+
 <Update label="Agosto 2026" description="POS Bridge — backlog visible, reintentos y semántica de errores">
 - `GET /v1/orders`: la respuesta suma **`total`** (cuántos pedidos hay en ese estado,
   no solo los de esta página) y **`has_more`**. Antes, con 35 pendientes veías lo mismo

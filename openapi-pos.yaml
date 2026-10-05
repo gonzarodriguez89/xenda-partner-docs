@@ -57,6 +57,10 @@ paths:
         Alta, modificación o baja de opciones, en lote. El `grupo` (ej. "Sabores")
         se crea automáticamente la primera vez que aparece. Mismas reglas de
         idempotencia, orden de eventos y errores por ítem que los productos.
+
+        Cargar opciones no las asocia a ningún producto: qué productos llevan
+        opciones y de qué grupo se configura del lado Xenda, como parte de la
+        puesta en marcha de la sucursal.
       requestBody:
         required: true
         content:
@@ -128,6 +132,10 @@ paths:
 
         Herramienta de testing de integración: en producción los pedidos reales los
         crea el bot a partir de la conversación con el cliente.
+
+        Funciona con cualquier key de sucursal. Con la key de una sucursal real el
+        pedido es real: aparece en la plataforma del local y los cambios de estado
+        intentan avisarle por WhatsApp al `telefono` enviado.
       requestBody:
         required: true
         content:

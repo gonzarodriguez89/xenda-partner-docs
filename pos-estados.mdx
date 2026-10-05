@@ -20,9 +20,9 @@ pendiente ──aceptado──► en_preparacion ──► listo ──► entre
 | `en_preparacion` | Tu POS (evento `aceptado`) | Aceptar = está en preparación. No hay un estado "aceptado" separado |
 | `listo` | Tu POS | Terminado, esperando retiro o despacho. Opcional: si tu flujo pasa directo al repartidor, podés saltearlo |
 | `asignado` | Tu POS o Xenda | Repartidor asignado. Tu POS puede emitirlo desde `en_preparacion` o `listo` |
-| `entregado` | Tu POS | Cierra el ciclo |
+| `entregado` | Tu POS o el local desde Xenda | Cierra el ciclo |
 | `rechazado` | Tu POS | Terminal. Requiere `motivo` |
-| `cancelado` | Tu POS o Xenda | Terminal. Requiere `motivo` cuando lo emite tu POS |
+| `cancelado` | Tu POS, el cliente o el local desde Xenda | Terminal. Requiere `motivo` cuando lo emite tu POS |
 | `en_camino` | Xenda | Solo pedidos con delivery gestionado por Xenda. Tu POS no lo emite, pero puede verlo al consultar |
 
 <Info>
@@ -68,13 +68,21 @@ Si tu cliente HTTP trata todo `403` como "credenciales inválidas", separá el c
 rate limit por el prefijo del mensaje.
 </Note>
 
-## Cancelaciones que no salen de tu POS
+## Cierres que no salen de tu POS
 
-Un pedido puede cerrarse sin que vos lo pidas: **el cliente lo cancela** desde WhatsApp
-mientras está `pendiente`, o **expira** por el timer (más abajo). No hay push hacia tu
-sistema, así que si tu flujo depende de enterarte, hay dos caminos: poll periódico de
-`GET /v1/orders?status=cancelado` además del de `pendiente`, o tratar el `400` de
-`invalid_transition` como señal de que el pedido ya se cerró y refrescar su estado.
+Los estados los mueve tu POS, pero un pedido puede **cerrarse** sin que vos lo pidas:
+
+- **El cliente lo cancela** desde WhatsApp mientras está `pendiente`.
+- **El local lo cierra desde la plataforma Xenda**: puede marcarlo `entregado` o
+  cancelarlo. Es lo único que el local puede hacer ahí con una sucursal conectada a un
+  POS; aceptar, rechazar y los pasos intermedios son siempre de tu sistema.
+- **Un tiempo automático del local** lo cierra, si el local lo activó (más abajo).
+
+No hay push hacia tu sistema, así que si tu flujo depende de enterarte, hay dos caminos:
+poll periódico de `GET /v1/orders?status=cancelado` (y `entregado`) además del de
+`pendiente`, o tratar el `400` de `invalid_transition` como señal de que el pedido ya se
+cerró y refrescar su estado. El mensaje trae el estado actual:
+`invalid_transition: ... (current: entregado)`.
 
 ## El `motivo` le llega al cliente final
 
@@ -87,17 +95,27 @@ bot le explica al cliente por WhatsApp** qué pasó. Escribilo pensando en esa p
 | `"Cerramos más temprano por feriado"` | `"cerrado"` |
 | `"No llegamos con los pedidos de esta noche"` | `"rechazado"` |
 
-## Pedidos que expiran
+## Tiempos automáticos del local
 
-En producción, un pedido `pendiente` que el local no acepta en un plazo configurable
-(por defecto **15 minutos**) se cancela automáticamente y el cliente recibe aviso —
-nadie se queda esperando un helado que ningún humano vio. Para tu POS eso significa:
+Cada local puede activar dos tiempos automáticos desde su configuración en Xenda.
+**Vienen apagados**: una sucursal nueva no cancela ni cierra nada por su cuenta.
+
+| Tiempo | Qué hace cuando está activo |
+| --- | --- |
+| Cancelación de pendientes | Un pedido `pendiente` que nadie aceptó en el plazo elegido pasa a `cancelado` y el cliente recibe aviso |
+| Cierre de pedidos en curso | Un pedido `en_preparacion` sin novedades en el plazo elegido pasa a `entregado`, sin avisarle al cliente |
+
+Si el local los activa, para tu POS significa:
 
 - Un pedido puede desaparecer de `?status=pendiente` entre un poll y el siguiente.
   Podés consultarlo con `?status=cancelado` si necesitás el detalle.
+- Un evento que llegue después del cierre (por ejemplo `asignado` sobre un pedido que
+  ya se cerró solo) recibe `400` con `invalid_transition`.
 - Aceptar rápido es parte de la experiencia: mientras antes llegue tu `aceptado`,
   antes recibe el cliente su confirmación.
 
 <Info>
-En el **sandbox** la expiración está desactivada, para que puedas probar con calma.
+En el **sandbox** los dos tiempos están apagados, para que puedas probar con calma. En
+una sucursal real, si tu flujo no emite `entregado`, conviene acordar con el local y con
+Xenda cómo se cierran los pedidos antes de salir a producción.
 </Info>
