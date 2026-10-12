@@ -508,10 +508,19 @@ components:
                 description: Tu código del producto (null si el producto se cargó manualmente en Xenda).
               nombre:
                 type: string
+                description: |
+                  Nombre del producto al momento del pedido. Si la línea viene de una
+                  promo del local, lleva el nombre de la promo entre paréntesis
+                  (por ejemplo `1/4 KG (Promo del lunes)`).
               cantidad:
                 type: integer
               precio_unitario:
                 type: number
+                description: |
+                  Precio unitario al momento del pedido. **Puede ser 0**: es el regalo o las
+                  unidades gratis de una promo del local (2x1, "comprando 1 kg te regalamos
+                  1/4 kg"). Con una promo de descuento en %, viene ya rebajado. `subtotal`
+                  y `total` lo contemplan: no hay líneas negativas ni descuentos aparte.
               subtotal:
                 type: number
               opciones:

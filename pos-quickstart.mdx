@@ -74,6 +74,15 @@ Todo lo demás viene siempre con valor: `pago.modo` default `"en_entrega"`,
 `pago.pagado` default `false`, `pago.monto` y `costo_envio` default `0`.
 </Note>
 
+<Note>
+**Líneas en $0 y precios rebajados (promos del local).** El local puede cargar en Xenda
+promos que el bot aplica al cotizar: un regalo por compra, un 2x1 o un descuento en %.
+En el pedido se ven como líneas normales, con tus códigos: el regalo o las unidades gratis
+llegan con `precio_unitario: 0` y `subtotal: 0` y el nombre de la promo entre paréntesis en
+`nombre`; con un descuento, `precio_unitario` viene ya rebajado. `total` las contempla.
+Tu sistema tiene que aceptar una línea con precio 0.
+</Note>
+
 ## 2. Aceptalo
 
 ```bash
