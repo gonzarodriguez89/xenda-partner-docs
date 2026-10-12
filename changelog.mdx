@@ -3,6 +3,23 @@ title: "Changelog"
 description: "Novedades y cambios de la Xenda Partner API."
 ---
 
+<Update label="Octubre 2026 (12/10)" description="POS Bridge — promos del local: líneas en $0 y precios rebajados">
+Sin cambios en el contrato: mismos campos, mismas respuestas. Cambia lo que puede venir
+en una línea del pedido.
+
+- **Promos del local.** El local puede cargar en Xenda un regalo por compra ("comprando
+  1 kg te regalamos 1/4 kg"), un 2x1 / 3x2, o un descuento en % (sobre un producto o
+  sobre todo el pedido), válidos ciertos días y, si quiere, solo pagando en efectivo. El
+  bot las ofrece y las aplica al cotizar.
+- **Qué ves en `GET /v1/orders`.** El regalo o las unidades gratis llegan como una línea
+  más en `lineas`, con tu `codigo`, `precio_unitario: 0`, `subtotal: 0` y el nombre de la
+  promo entre paréntesis en `nombre`. Con un descuento, `precio_unitario` viene ya
+  rebajado. `total` y `pago.monto` las contemplan: nunca hay líneas negativas ni un
+  campo de descuento aparte.
+- **Qué necesitamos de tu lado.** Que tu sistema acepte una línea con precio 0. Si
+  preferís otra representación, avisanos antes de que un local tuyo active promos.
+</Update>
+
 <Update label="Octubre 2026" description="POS Bridge — puesta en producción de una sucursal y cierres desde Xenda">
 Sin cambios en la API: mismo contrato, mismas respuestas. Cambia lo que el local puede
 hacer del lado Xenda y se completa la documentación.
